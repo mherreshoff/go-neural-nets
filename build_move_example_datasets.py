@@ -8,15 +8,24 @@ import numpy as np
 import util
 
 def save_labelled_examples(examples, file_name):
+  """Write the examples (minus moves where the player passes) to an npz
+  file.  The file contains two arrays.  Boards Nx3x19x19 and labels (the
+  moves) Nx2."""
+
   # For now, throw out passes:
   examples = [e for e in examples if e[1] is not None]
 
   boards = np.array(example[0] for example in examples)
-  labels = np.array(example[1] for example in examples)
-  np.savez(file_name, boards=boards, labels=labels)
+  moves = np.array(example[1] for example in examples)
+  np.savez(file_name, boards=boards, moves=moves)
 
 
 def build_move_example_datasets(sgfzip_input, train_output, test_output):
+  """Turns a zip file of SGFs into a training and testing set full of move
+  examples.  Passing moves are ignored.  Train/test split is by game
+  to better detect potential per-game overfit.  About 1/10 games end up in
+  the test set."""
+
   train = []
   test = []
   for game in util.zip_to_sgf_contents(sgfzip_input):

@@ -28,12 +28,17 @@ def build_move_example_datasets(sgfzip_input, train_output, test_output):
 
   train = []
   test = []
+  game_number = 0
   for game in util.zip_to_sgf_contents(sgfzip_input):
+    game_number += 1
+    if game_number % 100 == 0:
+      print "Processing game %d." % game_number
     examples = list(util.game_to_move_examples(game))
     if random.randint(0, 10) == 0:
       test.extend(examples)
     else:
       train.extend(examples)
+  print "Done reading games.  Shuffling and saving."
   save_labelled_examples(random.shuffle(train), train_output)
   save_labelled_examples(random.shuffle(test), test_output)
 

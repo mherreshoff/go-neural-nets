@@ -1,3 +1,5 @@
+# Utility code for messing with SGF files, and converting games to move
+# examples.
 
 from gomill import sgf
 from gomill import sgf_moves
@@ -54,7 +56,3 @@ def zip_to_sgf_contents(zip_file_name):
     if name.endswith('.sgf'):
       yield zf.read(name)
 
-def sgfzip_to_move_examples(zip_file_name):
-  for game in zip_to_sgf_contents(zip_file_name):
-    for example in game_to_move_examples(game):
-      yield example

@@ -3,6 +3,7 @@
 
 from gomill import sgf
 from gomill import sgf_moves
+import h5py
 import numpy as np
 import zipfile
 
@@ -55,4 +56,30 @@ def zip_to_sgf_contents(zip_file_name):
   for name in zf.namelist():
     if name.endswith('.sgf'):
       yield zf.read(name)
+
+def save_labelled_examples(examples, h5_output_file):
+  """Write the examples (minus moves where the player passes) to an npz
+  file.  The file contains two arrays.  Boards Nx3x19x19 and labels (the
+  moves) Nx2."""
+
+  # For now, throw out passes:
+  examples = [e for e in examples if e[1] is not None]
+
+  output_h5 = h5py.File(h5_output_file, 'w')
+
+  boards = np.array([example[0] for example in examples], dtype='float32')
+  boards_dset = output_h5.create_dataset(
+    'boards', boards.shape, dtype='float32')
+  boards_dset[...] = boards
+
+  moves = np.array([example[1] for example in examples], dtype='float32')
+  moves_dset = output_h5.create_dataset(
+    'moves', moves.shape, dtype='float32')
+  moves_dset[...] = moves
+
+
+def load_labelled_examples(h5_input_file):
+  input_h5 = h5py.File(h5_input_file, 'r')
+  return zip(list(input_h5['boards']), list(input_h5['moves']))
+
 

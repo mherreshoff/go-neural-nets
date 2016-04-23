@@ -11,15 +11,14 @@ BOARD_SIZE = 19
 
 
 def board_to_bitmap(board):
-  """Converts a GoMill board object to a 3x19x19 numpy array (three channel
-  19x19 bitmap.)  The three channels are (black, empty, white)."""
-  black = np.zeros([19, 19])
-  white = np.zeros([19, 19])
+  """Converts a GoMill board object to a 2x19x19 numpy array (two channel
+  19x19 bitmap.)  The two channels are (black, white)."""
+  black = np.zeros([19, 19], dtype='bool')
+  white = np.zeros([19, 19], dtype='bool')
   for color, (row, col) in board.list_occupied_points():
     (black if color == 'b' else white)[(row, col)] = 1
 
-  empty = 1 - (black + white)
-  return np.array([black, empty, white])
+  return np.array([black, white])
 
 
 def game_to_move_examples(sgf_src):
@@ -29,7 +28,7 @@ def game_to_move_examples(sgf_src):
   None).  We get one such tuple for each move made in the game, where
   board_bitmap is the state of the board before the move is made.
 
-  Here, the board_bitmap's channels are (player_to_move, empty, opponent)
+  Here, the board_bitmap's channels are (player_to_move, opponent)
   """
 
   sgf_game = sgf.Sgf_game.from_string(sgf_src)
@@ -57,29 +56,44 @@ def zip_to_sgf_contents(zip_file_name):
     if name.endswith('.sgf'):
       yield zf.read(name)
 
+
+def write_np_data(h5_handle, name, np_data):
+  dset = h5_handle.create_dataset(
+    name, np_data.shape, dtype=np_data.dtype)
+  dset[...] = np_data
+
+
 def save_labelled_examples(examples, h5_output_file):
   """Write the examples (minus moves where the player passes) to an npz
-  file.  The file contains two arrays.  Boards Nx3x19x19 and labels (the
-  moves) Nx2."""
+  file.  The file contains three arrays:
+
+  'boards_shape': the shape of the boards array (Nx2x19x19)
+  'boards_packed': boards (packed as a 1D bit array.)
+  'moves': the moves played (2D array of move coordinates.)
+  """
 
   # For now, throw out passes:
+
   examples = [e for e in examples if e[1] is not None]
+
+  boards = np.array([example[0] for example in examples], dtype='uint8')
 
   output_h5 = h5py.File(h5_output_file, 'w')
 
-  boards = np.array([example[0] for example in examples], dtype='float32')
-  boards_dset = output_h5.create_dataset(
-    'boards', boards.shape, dtype='float32')
-  boards_dset[...] = boards
+  boards_shape = np.array(list(boards.shape), dtype='int')
+  write_np_data(output_h5, 'boards_shape', boards_shape)
 
-  moves = np.array([example[1] for example in examples], dtype='float32')
-  moves_dset = output_h5.create_dataset(
-    'moves', moves.shape, dtype='float32')
-  moves_dset[...] = moves
+  boards_packed = np.packbits(
+    np.array([example[0] for example in examples], dtype='bool'))
+  write_np_data(output_h5, 'boards_packed', boards_packed)
+
+  moves = np.array([example[1] for example in examples], dtype='uint8')
+  write_np_data(output_h5, 'moves', moves)
 
 
 def load_labelled_examples(h5_input_file):
   input_h5 = h5py.File(h5_input_file, 'r')
-  return zip(list(input_h5['boards']), list(input_h5['moves']))
-
-
+  boards_shape = input_h5['boards_shape']
+  boards = np.reshape(np.unpackbits(input_h5['boards_packed']),
+                      boards_shape)
+  return zip(list(boards), list(input_h5['moves']))

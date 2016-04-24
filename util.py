@@ -94,6 +94,7 @@ def save_labelled_examples(examples, h5_output_file):
 def load_labelled_examples(h5_input_file):
   input_h5 = h5py.File(h5_input_file, 'r')
   boards_shape = input_h5['boards_shape']
-  boards = np.reshape(np.unpackbits(input_h5['boards_packed']),
+  boards_size = np.prod(boards_shape)
+  boards = np.reshape(np.unpackbits(input_h5['boards_packed'])[:boards_size],
                       boards_shape)
   return zip(list(boards), list(input_h5['moves']))
